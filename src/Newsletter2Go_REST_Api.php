@@ -17,6 +17,12 @@ class Newsletter2Go_REST_Api
     const METHOD_PATCH = "PATCH";
     const METHOD_DELETE = "DELETE";
     
+    const PARAMETER_FILTER = '_filter';
+    const PARAMETER_LIMIT  = '_limit';
+    const PARAMETER_OFFSET = '_offset';
+    const PARAMETER_EXPAND = '_expand';
+    const PARAMETER_FIELDS = '_fields';
+    
     private $user_email = "email";
     private $user_pw = "password";
     private $user_auth_key = "authkey";
@@ -26,12 +32,16 @@ class Newsletter2Go_REST_Api
     
     private $sslVerification = true;
     
+    private $parameter = [];
+    
     
     function __construct($authKey, $userEmail, $userPassword)
     {
         $this->user_auth_key = $authKey;
         $this->user_email    = $userEmail;
         $this->user_pw       = $userPassword;
+        
+        $this->expand(true);
     }
 
     /**
@@ -72,6 +82,68 @@ class Newsletter2Go_REST_Api
         $this->refresh_token = property_exists($response, 'refresh_token') ? $response->refresh_token : null;
         
     }
+    
+    
+    private function setParameter($key, $value)
+    {
+        if (null === $value) {
+          $this->removeParameter($key);
+        } else {
+          $this->parameter[$key] = $value;
+        }
+        
+        return $this;
+    }
+    
+    
+    private function removeParameter($key)
+    {
+        unset($this->parameter[$key]);
+    }
+    
+    
+    private function getParameters()
+    {
+        return $this->parameter;
+    }
+    
+    
+    private function buildData($data = [])
+    {
+        return array_merge($this->getParameters(), $data);
+    }
+    
+    
+    public function filter(?string $filter)
+    {
+      return $this->setParameter(static::PARAMETER_FILTER, $filter);
+    }
+    
+    
+    public function limit(?int $limit)
+    {
+      return $this->setParameter(static::PARAMETER_LIMIT, $limit);
+    }
+    
+    
+    public function offset(?int $offset)
+    {
+      return $this->setParameter(static::PARAMETER_OFFSET, $offset);
+    }
+    
+    
+    public function expand(?bool $expand)
+    {
+      return $this->setParameter(static::PARAMETER_EXPAND, $expand ? 1 : 0);
+    }
+    
+    
+    public function fields(?string $fields)
+    {
+      return $this->setParameter(static::PARAMETER_OFFSET, $fields);
+    }
+    
+    
 
     /**
      * getListDetails
@@ -203,14 +275,27 @@ class Newsletter2Go_REST_Api
      *
      * @throws \Exception
      */
-    public function getRecipients()
+    public function getRecipients($data = [])
     {
         
         $endpoint = "/recipients";
         
-        $data = array(
-            "_expand" => true
-        );
+        return $this->curl($endpoint, $data);
+    }
+
+    /**
+     * getRecipientsList
+     * https://docs.newsletter2go.com/?version=latest#c97c941a-267c-4afb-80e9-d45b0572b19d
+     * @param string $listId
+     * @return \stdClass
+     *
+     * @throws \Exception
+     */
+    public function getListRecipients($listId, $data = [])
+    {
+        
+        $endpoint = "/lists/$listId/recipients";
+        
         return $this->curl($endpoint, $data);
     }
 
@@ -222,14 +307,11 @@ class Newsletter2Go_REST_Api
      *
      * @throws \Exception
      */
-    public function getRecipient($recipientId)
+    public function getRecipient($recipientId, $data = [])
     {
         
         $endpoint = "/recipients/$recipientId";
         
-        $data = array(
-            "_expand" => true
-        );
         return $this->curl($endpoint, $data);
     }
 
@@ -358,14 +440,11 @@ class Newsletter2Go_REST_Api
      *
      * @throws \Exception
      */
-    public function getSegmentsList($listId)
+    public function getSegmentsList($listId, $data = [])
     {
         
         $endpoint = "/lists/$listId/groups";
         
-        $data = array(
-            "_expand" => true
-        );
         return $this->curl($endpoint, $data);
     }
 
@@ -459,14 +538,11 @@ class Newsletter2Go_REST_Api
      *
      * @throws \Exception
      */
-    public function getRecipientSegment($listId, $segmentId)
+    public function getRecipientSegment($listId, $segmentId, $data = [])
     {
         
         $endpoint = "/lists/$listId/groups/$segmentId/recipients";
         
-        $data = array(
-            "_expand" => true
-        );
         return $this->curl($endpoint, $data);
     }
 
@@ -484,11 +560,7 @@ class Newsletter2Go_REST_Api
     {
         $endpoint = "/lists/$listId/groups/$segmentId/recipients/$recipientId";
         
-        $data = array(
-            "_expand" => true
-        );
-        
-        return $this->curl($endpoint, $data, static::METHOD_POST);
+        return $this->curl($endpoint, [], static::METHOD_POST);
         
     }
 
@@ -520,14 +592,10 @@ class Newsletter2Go_REST_Api
      *
      * @throws \Exception
      */
-    public function getAttributesList($listId)
+    public function getAttributesList($listId, $data = [])
     {
         
         $endpoint = "/lists/$listId/attributes";
-        
-        $data = array(
-            "_expand" => true
-        );
         
         return $this->curl($endpoint, $data);
     }
@@ -540,14 +608,10 @@ class Newsletter2Go_REST_Api
      *
      * @throws \Exception
      */
-    public function getAttributeDetails($attributeId)
+    public function getAttributeDetails($attributeId, $data = [])
     {
         
         $endpoint = "/attributes/$attributeId";
-        
-        $data = array(
-            "_expand" => true
-        );
         
         return $this->curl($endpoint, $data);
     }
@@ -637,14 +701,10 @@ class Newsletter2Go_REST_Api
      *
      * @throws \Exception
      */
-    public function getMailingsList($listId)
+    public function getMailingsList($listId, $data = [])
     {
         
         $endpoint = "/lists/$listId/newsletters";
-        
-        $data = array(
-            "_expand" => true
-        );
         
         return $this->curl($endpoint, $data);
     }
@@ -657,14 +717,10 @@ class Newsletter2Go_REST_Api
      *
      * @throws \Exception
      */
-    public function getMailing($newsletterId)
+    public function getMailing($newsletterId, $data = [])
     {
         
         $endpoint = "/newsletters/$newsletterId";
-        
-        $data = array(
-            "_expand" => true
-        );
         
         return $this->curl($endpoint, $data);
     }
@@ -677,14 +733,10 @@ class Newsletter2Go_REST_Api
      *
      * @throws \Exception
      */
-    public function getMailingVersions($newsletterId)
+    public function getMailingVersions($newsletterId, $data = [])
     {
         
         $endpoint = "/newsletters/$newsletterId/versions";
-        
-        $data = array(
-            "_expand" => true
-        );
         
         return $this->curl($endpoint, $data);
     }
@@ -872,14 +924,14 @@ class Newsletter2Go_REST_Api
      *
      * @throws \Exception
      */
-    public function getSpecificMailingReports($newsletterId, $filter)
+    public function getSpecificMailingReports($newsletterId, $filter, $data = [])
     {
         
-        isset($filter) ? $endpoint = "/newsletters/$newsletterId/reports?_filter=" . $filter : $endpoint = "/newsletters/$newsletterId/reports";
-        
-        $data = array(
-            "_expand" => true
-        );
+        if ($filter) {
+            $this->filter($filter);
+        }
+      
+        $endpoint = "/newsletters/$newsletterId/reports";
         
         return $this->curl($endpoint, $data);
     }
@@ -892,14 +944,10 @@ class Newsletter2Go_REST_Api
      *
      * @throws \Exception
      */
-    public function getForm($formId)
+    public function getForm($formId, $data = [])
     {
         
         $endpoint = "/forms/generate/$formId";
-        
-        $data = array(
-            "_expand" => true
-        );
         
         return $this->curl($endpoint, $data);
     }
@@ -911,14 +959,10 @@ class Newsletter2Go_REST_Api
      *
      * @throws \Exception
      */
-    public function getCompany()
+    public function getCompany($data = [])
     {
         
         $endpoint = "/companies";
-        
-        $data = array(
-            "_expand" => true
-        );
         
         return $this->curl($endpoint, $data);
     }
@@ -929,14 +973,10 @@ class Newsletter2Go_REST_Api
      *
      * @throws \Exception
      */
-    public function getUsers()
+    public function getUsers($data = [])
     {
         
         $endpoint = "/users";
-        
-        $data = array(
-            "_expand" => true
-        );
         
         return $this->curl($endpoint, $data);
     }
@@ -1081,14 +1121,10 @@ class Newsletter2Go_REST_Api
      *
      * @throws \Exception
      */
-    public function getLists()
+    public function getLists($data = [])
     {
         
         $endpoint = "/lists";
-        
-        $data = array(
-            "_expand" => true
-        );
         
         return $this->curl($endpoint, $data);
     }
@@ -1209,6 +1245,8 @@ class Newsletter2Go_REST_Api
         if (!isset($this->access_token) || strlen($this->access_token) == 0) {
             throw new \Exception("Authentication failed");
         }
+        
+        $data = $this->buildData($data);
         
         $apiReponse = $this->_curl('Bearer ' . $this->access_token, $endpoint, $data, $type);
         
